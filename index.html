@@ -1,0 +1,958 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Food Log</title>
+<meta name="description" content="Personal calorie tracker">
+<meta name="theme-color" content="#f6f5f1" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#16171a" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Food Log">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<style>
+:root {
+  --bg: #f6f5f1;
+  --surface: #ffffff;
+  --surface-2: #efede7;
+  --text: #1d1d1f;
+  --muted: #6b6a66;
+  --border: #dedbd3;
+  --accent: #2f7d4f;
+  --accent-text: #ffffff;
+  --accent-soft: #dcefe3;
+  --danger: #b3261e;
+  --danger-soft: #fbe3e1;
+  --warn-soft: #fdf1d6;
+  --warn-text: #6e4f00;
+  --bar: #9cc7ac;
+  --bar-active: #2f7d4f;
+  --shadow: 0 1px 2px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.05);
+  --radius: 14px;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #16171a;
+    --surface: #212226;
+    --surface-2: #2b2c31;
+    --text: #ececec;
+    --muted: #a2a2a8;
+    --border: #36373d;
+    --accent: #5fbf85;
+    --accent-text: #0c1a12;
+    --accent-soft: #1f3a2a;
+    --danger: #f2827a;
+    --danger-soft: #3d2120;
+    --warn-soft: #3a3016;
+    --warn-text: #f1d48a;
+    --bar: #3d6b4f;
+    --bar-active: #5fbf85;
+    --shadow: none;
+  }
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) calc(96px + env(safe-area-inset-bottom)) env(safe-area-inset-left);
+}
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+.wrap { max-width: 640px; margin: 0 auto; padding: 0 16px; }
+header.top {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 0 6px;
+}
+header.top h1 { font-size: 1.25rem; margin: 0; letter-spacing: -.01em; }
+.icon-btn {
+  border: 1px solid var(--border); background: var(--surface); border-radius: 999px;
+  min-width: 40px; height: 40px; padding: 0 12px; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+}
+.icon-btn:disabled { opacity: .35; cursor: default; }
+.icon-btn svg { width: 20px; height: 20px; }
+.datenav { display: flex; align-items: center; gap: 8px; margin: 8px 0 12px; }
+.datenav .label { flex: 1; text-align: center; }
+.datenav .label strong { display: block; font-size: 1.05rem; }
+.datenav .label span { color: var(--muted); font-size: .85rem; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px 16px; margin-bottom: 12px; }
+.total { display: flex; align-items: baseline; gap: 8px; }
+.total .num { font-size: 2.4rem; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.total .unit { color: var(--muted); }
+.breakdown { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 10px; }
+.breakdown div { background: var(--surface-2); border-radius: 10px; padding: 6px 8px; text-align: center; }
+.breakdown b { display: block; font-variant-numeric: tabular-nums; }
+.breakdown small { color: var(--muted); font-size: .75rem; }
+.week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; align-items: end; }
+.week button {
+  border: 0; background: none; padding: 4px 0; display: flex; flex-direction: column; align-items: center; gap: 4px; border-radius: 8px;
+}
+.week .barbox { height: 84px; width: 100%; display: flex; align-items: flex-end; justify-content: center; }
+.week .bar { width: 70%; max-width: 34px; background: var(--bar); border-radius: 6px 6px 3px 3px; min-height: 3px; }
+.week button.active .bar { background: var(--bar-active); }
+.week button.active .d { color: var(--text); font-weight: 700; }
+.week .v { font-size: .7rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.week .d { font-size: .75rem; color: var(--muted); }
+.section-title { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.section-title h2 { font-size: 1rem; margin: 0; }
+.section-title .sub { color: var(--muted); font-variant-numeric: tabular-nums; }
+.entries { list-style: none; margin: 0; padding: 0; }
+.entries li { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--border); }
+.entries li:first-child { border-top: 0; }
+.entries .name { flex: 1; min-width: 0; }
+.entries .name div { overflow-wrap: anywhere; }
+.entries .name small { color: var(--muted); }
+.entries .cal { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.del { border: 0; background: none; color: var(--muted); width: 36px; height: 36px; border-radius: 999px; font-size: 1.2rem; line-height: 1; }
+.del:hover { background: var(--danger-soft); color: var(--danger); }
+.empty { color: var(--muted); font-size: .9rem; padding: 4px 0; }
+.add-inline { border: 0; background: none; color: var(--accent); font-weight: 600; padding: 6px 0 0; }
+.fab {
+  position: fixed; left: 50%; transform: translateX(-50%);
+  bottom: calc(18px + env(safe-area-inset-bottom));
+  background: var(--accent); color: var(--accent-text); border: 0; border-radius: 999px;
+  padding: 14px 26px; font-weight: 700; font-size: 1rem; box-shadow: 0 6px 20px rgba(0,0,0,.2); z-index: 5;
+}
+.btn { border: 1px solid var(--border); background: var(--surface); border-radius: 10px; padding: 10px 14px; font-weight: 600; }
+.btn.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+.btn.danger { color: var(--danger); }
+.btn:disabled { opacity: .5; cursor: default; }
+.row { display: flex; gap: 8px; align-items: center; }
+.row > .grow { flex: 1; min-width: 0; }
+label.f { display: block; font-size: .85rem; color: var(--muted); margin: 10px 0 4px; }
+input[type=text], input[type=number], input[type=password], input[type=search], select, textarea {
+  width: 100%; border: 1px solid var(--border); background: var(--surface); border-radius: 10px; padding: 10px 12px; font-size: 16px;
+}
+input:focus, select:focus, textarea:focus, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+dialog {
+  border: 0; padding: 0; background: var(--bg); color: var(--text);
+  width: 100%; max-width: 640px; max-height: 100dvh; height: 100dvh; margin: 0 auto;
+}
+dialog::backdrop { background: rgba(0,0,0,.45); }
+@media (min-width: 700px) {
+  dialog { height: auto; max-height: 90dvh; margin: 5dvh auto; border-radius: 18px; }
+}
+.dlg { display: flex; flex-direction: column; height: 100%; max-height: inherit; }
+.dlg-head { display: flex; align-items: center; justify-content: space-between; padding: calc(12px + env(safe-area-inset-top)) 16px 10px; border-bottom: 1px solid var(--border); }
+@media (min-width: 700px) { .dlg-head { padding-top: 12px; } }
+.dlg-head h2 { margin: 0; font-size: 1.1rem; }
+.dlg-body { padding: 12px 16px calc(24px + env(safe-area-inset-bottom)); overflow-y: auto; flex: 1; }
+.tabs { display: grid; grid-template-columns: repeat(3, 1fr); background: var(--surface-2); border-radius: 10px; padding: 3px; gap: 3px; margin: 10px 0; }
+.tabs button { border: 0; background: none; border-radius: 8px; padding: 8px; font-weight: 600; color: var(--muted); }
+.tabs button[aria-selected=true] { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
+.note { border-radius: 10px; padding: 10px 12px; font-size: .9rem; margin: 10px 0; }
+.note.warn { background: var(--warn-soft); color: var(--warn-text); }
+.note.err { background: var(--danger-soft); color: var(--danger); }
+.note.info { background: var(--surface-2); color: var(--muted); }
+.note a, .note button.linkish { color: inherit; font-weight: 700; text-decoration: underline; background: none; border: 0; padding: 0; }
+.results { list-style: none; padding: 0; margin: 8px 0 0; }
+.results li button {
+  width: 100%; text-align: left; border: 1px solid var(--border); background: var(--surface); border-radius: 10px;
+  padding: 10px 12px; margin-bottom: 6px; display: flex; gap: 10px; align-items: center;
+}
+.results .rn { flex: 1; min-width: 0; }
+.results .rn div { overflow-wrap: anywhere; }
+.results .rn small { color: var(--muted); display: block; }
+.results .rc { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.results .rc small { color: var(--muted); display: block; font-size: .72rem; }
+.badge { display: inline-block; font-size: .68rem; font-weight: 700; padding: 1px 6px; border-radius: 6px; margin-right: 4px; vertical-align: 1px; }
+.badge.usda { background: #e1ebfb; color: #1e4f9a; }
+.badge.off { background: #fbe8d6; color: #8a4a0c; }
+@media (prefers-color-scheme: dark) {
+  .badge.usda { background: #1f2e47; color: #a8c6f5; }
+  .badge.off { background: #43301c; color: #f4c592; }
+}
+.picked { margin-top: 8px; }
+.picked .big { font-size: 1.8rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.servings { display: flex; align-items: center; gap: 6px; }
+.servings input { text-align: center; max-width: 110px; }
+.servings button { width: 42px; height: 42px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); font-size: 1.2rem; }
+.photo-prev { max-width: 100%; max-height: 260px; border-radius: 12px; display: block; margin: 10px auto; }
+.est-list { list-style: none; padding: 0; margin: 8px 0; }
+.est-list li { display: flex; gap: 10px; align-items: center; padding: 8px 0; border-top: 1px solid var(--border); }
+.est-list li:first-child { border-top: 0; }
+.est-list input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--accent); flex: none; }
+.est-list .en { flex: 1; min-width: 0; }
+.est-list .en small { color: var(--muted); display: block; }
+.est-list input[type=number] { width: 92px; text-align: right; }
+.spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin .8s linear infinite; vertical-align: -3px; margin-right: 6px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.toast {
+  position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(84px + env(safe-area-inset-bottom));
+  background: var(--text); color: var(--bg); padding: 10px 14px; border-radius: 10px; z-index: 50;
+  display: flex; gap: 12px; align-items: center; max-width: calc(100% - 32px); box-shadow: 0 6px 20px rgba(0,0,0,.25);
+}
+.toast button { background: none; border: 0; color: inherit; font-weight: 700; text-decoration: underline; }
+.toast.err { background: var(--danger); color: #fff; }
+.hidden { display: none !important; }
+.muted { color: var(--muted); }
+hr.sep { border: 0; border-top: 1px solid var(--border); margin: 18px 0; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1>Food Log</h1>
+    <button class="icon-btn" id="openSettings" aria-label="Settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+    </button>
+  </header>
+
+  <nav class="datenav" aria-label="Day navigation">
+    <button class="icon-btn" id="prevDay" aria-label="Previous day">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <div class="label"><strong id="dayTitle">Today</strong><span id="daySub"></span></div>
+    <button class="icon-btn" id="todayBtn">Today</button>
+    <button class="icon-btn" id="nextDay" aria-label="Next day">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
+    </button>
+  </nav>
+
+  <section class="card" aria-label="Daily total">
+    <div class="total"><span class="num" id="dayTotal">0</span><span class="unit">kcal</span></div>
+    <div class="breakdown" id="breakdown"></div>
+  </section>
+
+  <section class="card" aria-label="Last 7 days">
+    <div class="section-title"><h2>7 days</h2><span class="sub" id="weekAvg"></span></div>
+    <div class="week" id="week"></div>
+  </section>
+
+  <div id="meals"></div>
+</div>
+
+<button class="fab" id="fab">+ Add food</button>
+
+<!-- Add food dialog -->
+<dialog id="addDlg" aria-labelledby="addTitle">
+  <div class="dlg">
+    <div class="dlg-head">
+      <h2 id="addTitle">Add food</h2>
+      <button class="icon-btn" data-close aria-label="Close">✕</button>
+    </div>
+    <div class="dlg-body">
+      <label class="f" for="mealSel">Meal</label>
+      <select id="mealSel"></select>
+      <div class="tabs" role="tablist">
+        <button role="tab" data-tab="search" aria-selected="true">Search</button>
+        <button role="tab" data-tab="photo" aria-selected="false">Photo</button>
+        <button role="tab" data-tab="manual" aria-selected="false">Manual</button>
+      </div>
+
+      <!-- Search -->
+      <div data-panel="search">
+        <form id="searchForm" class="row" autocomplete="off">
+          <input class="grow" type="search" id="searchQ" placeholder="e.g. greek yogurt, cheerios" enterkeyhint="search" aria-label="Search foods">
+          <button class="btn primary" type="submit" id="searchBtn">Search</button>
+        </form>
+        <div id="demoNote" class="note warn hidden">Using USDA <b>DEMO_KEY</b>, which has low rate limits (about 30 searches an hour). Add your own free key in <button class="linkish" data-goto-settings>Settings</button>.</div>
+        <div id="searchStatus"></div>
+        <div id="picked" class="picked card hidden"></div>
+        <ul class="results" id="results"></ul>
+      </div>
+
+      <!-- Photo -->
+      <div data-panel="photo" class="hidden">
+        <div id="photoNoKey" class="note warn hidden">Photo estimates need an Anthropic API key. Add one in <button class="linkish" data-goto-settings>Settings</button>.</div>
+        <div id="photoUI">
+          <div class="row">
+            <button class="btn grow" id="camBtn" type="button">📷 Take photo</button>
+            <button class="btn grow" id="libBtn" type="button">🖼️ Choose photo</button>
+          </div>
+          <input type="file" id="camInput" accept="image/*" capture="environment" class="hidden">
+          <input type="file" id="libInput" accept="image/*" class="hidden">
+          <img id="photoPrev" class="photo-prev hidden" alt="Selected meal photo">
+          <label class="f" for="photoNote">Note (optional)</label>
+          <input type="text" id="photoNote" placeholder="e.g. 6 ravioli, half eaten">
+          <div style="margin-top:10px"><button class="btn primary" id="estBtn" type="button" disabled>Estimate calories</button></div>
+          <div id="photoStatus"></div>
+          <div id="estWrap" class="hidden">
+            <ul class="est-list" id="estList"></ul>
+            <div class="row"><span class="grow muted" id="estSum"></span><button class="btn primary" id="estAdd" type="button">Add selected</button></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Manual -->
+      <div data-panel="manual" class="hidden">
+        <form id="manualForm" autocomplete="off">
+          <label class="f" for="mName">Food name</label>
+          <input type="text" id="mName" required>
+          <label class="f" for="mPortion">Portion (optional)</label>
+          <input type="text" id="mPortion" placeholder="e.g. 1 cup">
+          <label class="f" for="mCal">Calories</label>
+          <input type="number" id="mCal" inputmode="decimal" min="0" step="any" required>
+          <div id="manualStatus"></div>
+          <div style="margin-top:12px"><button class="btn primary" type="submit">Add</button></div>
+        </form>
+      </div>
+    </div>
+  </div>
+</dialog>
+
+<!-- Settings dialog -->
+<dialog id="setDlg" aria-labelledby="setTitle">
+  <div class="dlg">
+    <div class="dlg-head">
+      <h2 id="setTitle">Settings</h2>
+      <button class="icon-btn" data-close aria-label="Close">✕</button>
+    </div>
+    <div class="dlg-body">
+      <form id="keysForm" autocomplete="off">
+        <label class="f" for="usdaKey">USDA FoodData Central API key</label>
+        <input type="password" id="usdaKey" placeholder="Blank = DEMO_KEY (low rate limits)" spellcheck="false" autocapitalize="off">
+        <label class="f" for="antKey">Anthropic API key (for photo estimates)</label>
+        <input type="password" id="antKey" placeholder="sk-ant-…" spellcheck="false" autocapitalize="off">
+        <label class="row" style="margin-top:8px;font-size:.9rem"><input type="checkbox" id="showKeys"> Show keys</label>
+        <p class="muted" style="font-size:.85rem">Keys are stored only in this browser's local storage. They're sent directly to USDA and Anthropic, and never included in exports.</p>
+        <div class="row"><button class="btn primary" type="submit">Save keys</button><span id="keysStatus" class="muted"></span></div>
+      </form>
+      <hr class="sep">
+      <h3 style="margin:0 0 6px;font-size:1rem">Data</h3>
+      <p class="muted" style="font-size:.85rem;margin-top:0" id="dataSummary"></p>
+      <div class="row">
+        <button class="btn" id="exportBtn" type="button">Export backup</button>
+        <button class="btn" id="importBtn" type="button">Import backup</button>
+        <input type="file" id="importInput" accept="application/json,.json" class="hidden">
+      </div>
+      <div id="dataStatus"></div>
+    </div>
+  </div>
+</dialog>
+
+<div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+'use strict';
+
+// ---------- Constants ----------
+const MEALS = [
+  { id: 'morning', label: 'Morning' },
+  { id: 'lunch', label: 'Lunch' },
+  { id: 'dinner', label: 'Dinner' },
+  { id: 'snacks', label: 'Snacks' },
+];
+const LOG_KEY = 'foodlog.v1';
+const USDA_KEY = 'foodlog.usdaKey';
+const ANT_KEY = 'foodlog.anthropicKey';
+const USDA_URL = 'https://api.nal.usda.gov/fdc/v1/foods/search';
+const OFF_URL = 'https://world.openfoodfacts.org/cgi/search.pl';
+const ANT_URL = 'https://api.anthropic.com/v1/messages';
+const ANT_MODEL = 'claude-sonnet-5-5';
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => Array.from(el.querySelectorAll(s));
+
+// ---------- Storage helpers ----------
+function lsGet(k) { try { return localStorage.getItem(k); } catch { return null; } }
+function lsSet(k, v) {
+  try { localStorage.setItem(k, v); return true; }
+  catch (e) { toast('Could not save to this browser’s storage: ' + (e && e.name === 'QuotaExceededError' ? 'storage is full.' : 'storage is blocked (private mode?).'), true); return false; }
+}
+function loadLog() {
+  const raw = lsGet(LOG_KEY);
+  if (!raw) return { version: 1, days: {} };
+  try {
+    const d = JSON.parse(raw);
+    if (d && typeof d.days === 'object') return d;
+  } catch {}
+  toast('Saved log data was unreadable. Starting empty; import a backup to restore.', true);
+  return { version: 1, days: {} };
+}
+let log = loadLog();
+function saveLog() { return lsSet(LOG_KEY, JSON.stringify(log)); }
+const usdaKey = () => (lsGet(USDA_KEY) || '').trim();
+const antKey = () => (lsGet(ANT_KEY) || '').trim();
+
+// ---------- Dates ----------
+const pad = n => String(n).padStart(2, '0');
+const keyOf = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const dateOf = k => { const [y, m, d] = k.split('-').map(Number); return new Date(y, m - 1, d); };
+const addDays = (k, n) => { const d = dateOf(k); d.setDate(d.getDate() + n); return keyOf(d); };
+const todayKey = () => keyOf(new Date());
+let current = todayKey();
+
+// ---------- Utils ----------
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+const fmt = n => Math.round(n).toLocaleString();
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const round1 = n => Math.round(n * 10) / 10;
+function dayEntries(k) { return log.days[k] || []; }
+function dayTotal(k) { return dayEntries(k).reduce((s, e) => s + (Number(e.cal) || 0), 0); }
+
+let toastTimer;
+function toast(msg, isErr = false, action) {
+  const t = $('#toast');
+  t.className = 'toast' + (isErr ? ' err' : '');
+  t.innerHTML = `<span>${esc(msg)}</span>`;
+  if (action) {
+    const b = document.createElement('button');
+    b.textContent = action.label;
+    b.onclick = () => { action.fn(); t.classList.add('hidden'); };
+    t.appendChild(b);
+  }
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.add('hidden'), isErr ? 7000 : 4500);
+}
+function note(el, kind, html) { el.innerHTML = html ? `<div class="note ${kind}">${html}</div>` : ''; }
+
+// ---------- Rendering ----------
+function render() {
+  const today = todayKey();
+  if (current > today) current = today;
+  const d = dateOf(current);
+  const diff = Math.round((dateOf(today) - d) / 86400000);
+  $('#dayTitle').textContent = diff === 0 ? 'Today' : diff === 1 ? 'Yesterday' : d.toLocaleDateString(undefined, { weekday: 'long' });
+  $('#daySub').textContent = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: d.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined });
+  $('#nextDay').disabled = current >= today;
+  $('#todayBtn').classList.toggle('hidden', current === today);
+
+  const entries = dayEntries(current);
+  $('#dayTotal').textContent = fmt(dayTotal(current));
+  $('#breakdown').innerHTML = MEALS.map(m => {
+    const s = entries.filter(e => e.meal === m.id).reduce((a, e) => a + (Number(e.cal) || 0), 0);
+    return `<div><b>${fmt(s)}</b><small>${m.label}</small></div>`;
+  }).join('');
+
+  // Week: ends today, unless viewing a day older than that window.
+  const end = addDays(current, 6) >= today ? today : current;
+  const days = Array.from({ length: 7 }, (_, i) => addDays(end, i - 6));
+  const totals = days.map(dayTotal);
+  const max = Math.max(...totals, 1);
+  const logged = totals.filter(t => t > 0);
+  $('#weekAvg').textContent = logged.length ? `avg ${fmt(logged.reduce((a, b) => a + b, 0) / logged.length)} kcal` : '';
+  $('#week').innerHTML = days.map((k, i) => {
+    const dd = dateOf(k);
+    const h = Math.max(3, Math.round(totals[i] / max * 84));
+    return `<button data-day="${k}" class="${k === current ? 'active' : ''}" aria-label="${dd.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}: ${fmt(totals[i])} kcal">
+      <span class="v">${totals[i] ? fmt(totals[i]) : ''}</span>
+      <span class="barbox"><span class="bar" style="height:${totals[i] ? h : 3}px"></span></span>
+      <span class="d">${dd.toLocaleDateString(undefined, { weekday: 'narrow' })}${dd.getDate()}</span></button>`;
+  }).join('');
+
+  $('#meals').innerHTML = MEALS.map(m => {
+    const list = entries.filter(e => e.meal === m.id);
+    const sum = list.reduce((a, e) => a + (Number(e.cal) || 0), 0);
+    return `<section class="card" aria-label="${m.label}">
+      <div class="section-title"><h2>${m.label}</h2><span class="sub">${fmt(sum)} kcal</span></div>
+      ${list.length ? `<ul class="entries">${list.map(e => `
+        <li><div class="name"><div>${esc(e.name)}</div>${e.portion ? `<small>${esc(e.portion)}</small>` : ''}</div>
+        <span class="cal">${fmt(e.cal)}</span>
+        <button class="del" data-del="${esc(e.id)}" aria-label="Delete ${esc(e.name)}">✕</button></li>`).join('')}</ul>` : '<div class="empty">Nothing logged</div>'}
+      <button class="add-inline" data-add-meal="${m.id}">+ Add to ${m.label}</button>
+    </section>`;
+  }).join('');
+}
+
+function addEntries(items) {
+  const k = current;
+  if (!log.days[k]) log.days[k] = [];
+  log.days[k].push(...items.map(it => ({ id: uid(), ts: Date.now(), ...it, cal: Math.round(Number(it.cal) || 0) })));
+  if (!saveLog()) { log = loadLog(); return false; }
+  render();
+  return true;
+}
+
+function deleteEntry(id) {
+  const list = dayEntries(current);
+  const idx = list.findIndex(e => e.id === id);
+  if (idx < 0) return;
+  const [removed] = list.splice(idx, 1);
+  const dayK = current;
+  if (!list.length) delete log.days[dayK];
+  saveLog();
+  render();
+  toast(`Deleted ${removed.name}`, false, { label: 'Undo', fn: () => {
+    if (!log.days[dayK]) log.days[dayK] = [];
+    log.days[dayK].splice(idx, 0, removed);
+    saveLog(); render();
+  } });
+}
+
+// ---------- Events: main ----------
+$('#prevDay').onclick = () => { current = addDays(current, -1); render(); };
+$('#nextDay').onclick = () => { if (current < todayKey()) { current = addDays(current, 1); render(); } };
+$('#todayBtn').onclick = () => { current = todayKey(); render(); };
+$('#week').onclick = e => { const b = e.target.closest('[data-day]'); if (b) { current = b.dataset.day; render(); } };
+$('#meals').onclick = e => {
+  const del = e.target.closest('[data-del]');
+  if (del) return deleteEntry(del.dataset.del);
+  const add = e.target.closest('[data-add-meal]');
+  if (add) openAdd(add.dataset.addMeal);
+};
+$('#fab').onclick = () => openAdd();
+$('#openSettings').onclick = openSettings;
+$$('dialog [data-close]').forEach(b => b.onclick = () => b.closest('dialog').close());
+$$('dialog').forEach(d => d.addEventListener('click', e => { if (e.target === d) d.close(); }));
+document.addEventListener('click', e => {
+  if (e.target.closest('[data-goto-settings]')) { $('#addDlg').close(); openSettings(); }
+});
+document.addEventListener('visibilitychange', () => { if (!document.hidden) render(); });
+
+// ---------- Add dialog ----------
+$('#mealSel').innerHTML = MEALS.map(m => `<option value="${m.id}">${m.label}</option>`).join('');
+function defaultMeal() {
+  const h = new Date().getHours();
+  if (current !== todayKey()) return 'snacks';
+  return h < 11 ? 'morning' : h < 15 ? 'lunch' : h < 21 ? 'dinner' : 'snacks';
+}
+let activeTab = 'search';
+function setTab(t) {
+  activeTab = t;
+  $$('.tabs [data-tab]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === t)));
+  $$('[data-panel]').forEach(p => p.classList.toggle('hidden', p.dataset.panel !== t));
+  if (t === 'photo') refreshPhotoAvailability();
+}
+$$('.tabs [data-tab]').forEach(b => b.onclick = () => setTab(b.dataset.tab));
+function openAdd(meal) {
+  $('#mealSel').value = meal || defaultMeal();
+  const dd = dateOf(current);
+  $('#addTitle').textContent = current === todayKey() ? 'Add food' : `Add food · ${dd.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`;
+  $('#demoNote').classList.toggle('hidden', !!usdaKey());
+  refreshPhotoAvailability();
+  setTab(activeTab);
+  $('#addDlg').showModal();
+  if (activeTab === 'search' && matchMedia('(min-width: 700px)').matches) $('#searchQ').focus();
+}
+const meal = () => $('#mealSel').value;
+const mealLabel = id => (MEALS.find(m => m.id === id) || {}).label || id;
+
+// ---------- Fetch helper ----------
+class AppError extends Error {}
+async function fetchJSON(url, opts = {}, { timeout = 20000, label = 'Request' } = {}) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeout);
+  let res;
+  try {
+    res = await fetch(url, { ...opts, signal: ctrl.signal });
+  } catch (e) {
+    if (e.name === 'AbortError') throw new AppError(`${label} timed out after ${timeout / 1000}s. Check your connection and try again.`);
+    throw new AppError(navigator.onLine === false ? `You appear to be offline. ${label} needs an internet connection.` : `${label} failed: network error (could not reach the server). Check your connection, or the service may be down.`);
+  } finally { clearTimeout(timer); }
+  let body = null, text = '';
+  try { text = await res.text(); body = text ? JSON.parse(text) : null; } catch { body = null; }
+  return { res, body, text };
+}
+
+// ---------- Food search ----------
+function kcalFromUSDA(f) {
+  const ns = f.foodNutrients || [];
+  const by = num => ns.find(n => String(n.nutrientNumber) === num && n.value != null);
+  let n = by('208') || ns.find(n => n.nutrientId === 1008 && n.value != null);
+  if (n && /kj/i.test(n.unitName || '')) return n.value / 4.184;
+  if (n) return n.value;
+  n = by('958') || by('957'); // Atwater energy, used by some Foundation foods
+  if (n) return n.value;
+  n = by('268');
+  return n ? n.value / 4.184 : null;
+}
+function titleCase(s) { return s && s === s.toUpperCase() ? s.toLowerCase().replace(/\b\w/g, c => c.toUpperCase()) : s; }
+
+function normUSDA(f) {
+  const per100 = kcalFromUSDA(f);
+  if (per100 == null) return null;
+  const brand = titleCase(f.brandName || f.brandOwner || '');
+  const name = titleCase(f.description || 'Unnamed food');
+  const unit = (f.servingSizeUnit || '').toLowerCase();
+  const size = Number(f.servingSize);
+  if (f.dataType === 'Branded' && size > 0 && /^(g|grm|gm|ml|mlt)$/.test(unit)) {
+    const u = /^m/.test(unit) ? 'ml' : 'g';
+    const house = f.householdServingFullText ? `${f.householdServingFullText} (${round1(size)} ${u})` : `${round1(size)} ${u}`;
+    return { src: 'usda', name, brand, kcal: per100 * size / 100, serving: house, basis: `${fmt(per100)} kcal / 100 ${u}` };
+  }
+  return { src: 'usda', name, brand, kcal: per100, serving: '100 g', basis: f.dataType || '' };
+}
+
+async function searchUSDA(q) {
+  const key = usdaKey() || 'DEMO_KEY';
+  const url = `${USDA_URL}?${new URLSearchParams({ api_key: key, query: q, pageSize: '25' })}`;
+  const { res, body } = await fetchJSON(url, {}, { label: 'USDA search' });
+  if (!res.ok) {
+    const code = body && body.error && body.error.code;
+    if (code === 'OVER_RATE_LIMIT' || res.status === 429)
+      throw new AppError(key === 'DEMO_KEY' ? 'USDA rate limit reached for DEMO_KEY. Add your own free key in Settings, or wait an hour.' : 'USDA rate limit reached for your key. Wait a while and try again.');
+    if (code === 'API_KEY_INVALID' || code === 'API_KEY_MISSING' || res.status === 403 || res.status === 401)
+      throw new AppError('USDA rejected the API key. Check it in Settings (or clear it to use DEMO_KEY).');
+    throw new AppError(`USDA search failed (HTTP ${res.status}).`);
+  }
+  if (!body || !Array.isArray(body.foods)) throw new AppError('USDA returned an unexpected response.');
+  return body.foods.map(normUSDA).filter(Boolean);
+}
+
+function normOFF(p) {
+  const n = p.nutriments || {};
+  const name = (p.product_name || p.generic_name || '').trim();
+  if (!name) return null;
+  let per100 = n['energy-kcal_100g'];
+  if (per100 == null && n['energy_100g'] != null) per100 = n['energy_100g'] / 4.184; // kJ
+  const perServ = n['energy-kcal_serving'];
+  const qty = Number(p.serving_quantity);
+  const brand = (p.brands || '').split(',')[0].trim();
+  const servLabel = p.serving_size ? String(p.serving_size).trim() : (qty > 0 ? `${round1(qty)} g` : '');
+  const basis = per100 != null ? `${fmt(per100)} kcal / 100 g` : '';
+  if (perServ != null && servLabel) return { src: 'off', name, brand, kcal: Number(perServ), serving: servLabel, basis };
+  if (per100 != null && qty > 0) return { src: 'off', name, brand, kcal: per100 * qty / 100, serving: servLabel, basis };
+  if (per100 != null) return { src: 'off', name, brand, kcal: Number(per100), serving: '100 g', basis: '' };
+  return null;
+}
+
+async function searchOFF(q) {
+  const url = `${OFF_URL}?${new URLSearchParams({ search_terms: q, search_simple: '1', action: 'process', json: '1', page_size: '20', fields: 'code,product_name,generic_name,brands,nutriments,serving_size,serving_quantity' })}`;
+  const { res, body } = await fetchJSON(url, {}, { label: 'Open Food Facts search', timeout: 20000 });
+  if (res.status === 429) throw new AppError('Open Food Facts is rate-limiting requests. Wait a minute and try again.');
+  if (!res.ok) throw new AppError(`Open Food Facts search failed (HTTP ${res.status}).`);
+  if (!body || !Array.isArray(body.products)) throw new AppError('Open Food Facts returned an unexpected response.');
+  return body.products.map(normOFF).filter(r => r && isFinite(r.kcal));
+}
+
+let results = [];
+let searchSeq = 0;
+$('#searchForm').onsubmit = async e => {
+  e.preventDefault();
+  const q = $('#searchQ').value.trim();
+  const status = $('#searchStatus');
+  if (!q) { note(status, 'err', 'Type a food to search for.'); return; }
+  const seq = ++searchSeq;
+  $('#searchBtn').disabled = true;
+  $('#picked').classList.add('hidden');
+  $('#results').innerHTML = '';
+  note(status, 'info', '<span class="spinner"></span>Searching USDA and Open Food Facts…');
+  const [u, o] = await Promise.allSettled([searchUSDA(q), searchOFF(q)]);
+  if (seq !== searchSeq) return;
+  $('#searchBtn').disabled = false;
+  const errMsg = r => r.reason instanceof AppError ? r.reason.message : `Unexpected error: ${r.reason && r.reason.message || r.reason}`;
+  const us = u.status === 'fulfilled' ? u.value : [];
+  const os = o.status === 'fulfilled' ? o.value : [];
+  results = [];
+  for (let i = 0; i < Math.max(us.length, os.length); i++) { if (us[i]) results.push(us[i]); if (os[i]) results.push(os[i]); }
+  const errs = [u, o].filter(r => r.status === 'rejected').map(errMsg);
+  let html = errs.map(m => `<div class="note err">${esc(m)}</div>`).join('');
+  if (!results.length && !errs.length) html += `<div class="note info">No results for “${esc(q)}”. Try fewer or different words, or use Manual entry.</div>`;
+  else if (!results.length) html += `<div class="note info">No results to show. You can still add it with Manual entry.</div>`;
+  else if (errs.length) html += `<div class="note info">Showing results from ${u.status === 'fulfilled' ? 'USDA' : 'Open Food Facts'} only.</div>`;
+  status.innerHTML = html;
+  $('#results').innerHTML = results.map((r, i) => `<li><button data-i="${i}">
+    <span class="rn"><div><span class="badge ${r.src}">${r.src === 'usda' ? 'USDA' : 'OFF'}</span>${esc(r.name)}</div>
+    <small>${[r.brand, r.basis].filter(Boolean).map(esc).join(' · ')}</small></span>
+    <span class="rc">${fmt(r.kcal)} kcal<small>per ${esc(r.serving)}</small></span></button></li>`).join('');
+};
+
+$('#results').onclick = e => {
+  const b = e.target.closest('[data-i]');
+  if (!b) return;
+  const r = results[+b.dataset.i];
+  const p = $('#picked');
+  p.classList.remove('hidden');
+  p.innerHTML = `<div><span class="badge ${r.src}">${r.src === 'usda' ? 'USDA' : 'Open Food Facts'}</span><b>${esc(r.name)}</b></div>
+    ${r.brand ? `<div class="muted">${esc(r.brand)}</div>` : ''}
+    <div class="muted" style="margin-top:4px">1 serving = <b>${esc(r.serving)}</b> = ${fmt(r.kcal)} kcal${r.basis && /100/.test(r.basis) ? ` <small>(${esc(r.basis)})</small>` : ''}</div>
+    <label class="f" for="servN">Servings</label>
+    <div class="row">
+      <div class="servings"><button type="button" data-step="-0.5" aria-label="Fewer servings">−</button>
+      <input type="number" id="servN" value="1" min="0" step="any" inputmode="decimal">
+      <button type="button" data-step="0.5" aria-label="More servings">+</button></div>
+      <div class="grow" style="text-align:right"><span class="big" id="servTotal">${fmt(r.kcal)}</span> kcal</div>
+    </div>
+    <div id="pickErr"></div>
+    <div class="row" style="margin-top:10px"><button class="btn primary grow" id="pickAdd" type="button">Add to <span id="pickMeal">${mealLabel(meal())}</span></button><button class="btn" id="pickCancel" type="button">Cancel</button></div>`;
+  const inp = $('#servN');
+  const upd = () => { const n = parseFloat(inp.value); $('#servTotal').textContent = isFinite(n) && n > 0 ? fmt(r.kcal * n) : '—'; };
+  inp.oninput = upd;
+  $$('[data-step]', p).forEach(s => s.onclick = () => { const n = parseFloat(inp.value) || 0; inp.value = String(Math.max(0.25, round1(n + Number(s.dataset.step)))); upd(); });
+  $('#pickCancel').onclick = () => p.classList.add('hidden');
+  $('#pickAdd').onclick = () => {
+    const n = parseFloat(inp.value);
+    if (!isFinite(n) || n <= 0) { note($('#pickErr'), 'err', 'Enter a number of servings greater than 0 (decimals are fine, e.g. 1.5).'); return; }
+    const portion = `${n === 1 ? '' : n + ' × '}${r.serving}`;
+    const name = r.brand ? `${r.name} (${r.brand})` : r.name;
+    if (addEntries([{ meal: meal(), name, portion, cal: r.kcal * n, source: r.src }])) {
+      p.classList.add('hidden');
+      toast(`Added ${fmt(r.kcal * n)} kcal to ${mealLabel(meal())}`);
+    }
+  };
+  p.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+};
+$('#mealSel').onchange = () => { const pm = $('#pickMeal'); if (pm) pm.textContent = mealLabel(meal()); };
+
+// ---------- Manual entry ----------
+$('#manualForm').onsubmit = e => {
+  e.preventDefault();
+  const name = $('#mName').value.trim();
+  const portion = $('#mPortion').value.trim();
+  const cal = parseFloat($('#mCal').value);
+  const st = $('#manualStatus');
+  if (!name) { note(st, 'err', 'Enter a food name.'); return; }
+  if (!isFinite(cal) || cal < 0) { note(st, 'err', 'Enter calories as a number (0 or more).'); return; }
+  note(st);
+  if (addEntries([{ meal: meal(), name, portion, cal, source: 'manual' }])) {
+    $('#manualForm').reset();
+    toast(`Added ${fmt(cal)} kcal to ${mealLabel(meal())}`);
+  }
+};
+
+// ---------- Photo estimate ----------
+let photoData = null; // base64 JPEG
+function refreshPhotoAvailability() {
+  const has = !!antKey();
+  $('#photoNoKey').classList.toggle('hidden', has);
+  $('#photoUI').style.opacity = has ? '' : '.45';
+  $$('#photoUI button, #photoUI input').forEach(el => el.disabled = !has);
+  if (has) $('#estBtn').disabled = !photoData;
+}
+$('#camBtn').onclick = () => $('#camInput').click();
+$('#libBtn').onclick = () => $('#libInput').click();
+$('#camInput').onchange = $('#libInput').onchange = async e => {
+  const file = e.target.files && e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  const st = $('#photoStatus');
+  $('#estWrap').classList.add('hidden');
+  note(st, 'info', '<span class="spinner"></span>Preparing photo…');
+  try {
+    photoData = await downscale(file, 1200);
+    $('#photoPrev').src = 'data:image/jpeg;base64,' + photoData;
+    $('#photoPrev').classList.remove('hidden');
+    $('#estBtn').disabled = false;
+    note(st);
+  } catch (err) {
+    photoData = null;
+    $('#estBtn').disabled = true;
+    note(st, 'err', esc(err.message || 'Could not read that image.'));
+  }
+};
+
+function loadImage(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('This image format can’t be read by your browser. Try a JPEG or PNG.')); };
+    img.src = url;
+  });
+}
+async function downscale(file, maxSide) {
+  if (file.type && !file.type.startsWith('image/')) throw new Error('That file isn’t an image.');
+  const img = await loadImage(file); // browsers apply EXIF orientation when drawing
+  const w = img.naturalWidth, h = img.naturalHeight;
+  if (!w || !h) throw new Error('The image appears to be empty.');
+  const scale = Math.min(1, maxSide / Math.max(w, h));
+  const cw = Math.round(w * scale), ch = Math.round(h * scale);
+  const c = document.createElement('canvas');
+  c.width = cw; c.height = ch;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, cw, ch);
+  ctx.drawImage(img, 0, 0, cw, ch);
+  const dataUrl = c.toDataURL('image/jpeg', 0.85);
+  return dataUrl.slice(dataUrl.indexOf(',') + 1);
+}
+
+const PHOTO_SYSTEM = `You estimate the calories in meal photos for a personal food log.
+Identify each distinct food or drink visible. For each, estimate the portion actually shown and its calories using USDA FoodData Central reference values.
+If the user adds a note (for example a count, size, or brand), treat it as authoritative over what you see.
+Respond with ONLY a JSON array, no prose and no code fences. Each element: {"name": string, "portion": string, "cal": number}.
+"portion" is a short human description such as "1 cup", "2 slices", or "about 150 g". "cal" is a whole number of kcal.
+If there is no food in the image, respond with [].`;
+
+function parseEstimate(text) {
+  let t = String(text || '').trim().replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim();
+  let arr;
+  try { arr = JSON.parse(t); } catch {
+    const s = t.indexOf('['), e = t.lastIndexOf(']');
+    if (s < 0 || e <= s) throw new AppError('The model didn’t return a food list. Try again, or add a note describing the food.');
+    try { arr = JSON.parse(t.slice(s, e + 1)); } catch { throw new AppError('The model’s answer couldn’t be read as a food list. Try again.'); }
+  }
+  if (arr && !Array.isArray(arr) && Array.isArray(arr.items)) arr = arr.items;
+  if (!Array.isArray(arr)) throw new AppError('The model’s answer wasn’t a list of foods. Try again.');
+  return arr.map(x => {
+    if (!x || typeof x !== 'object') return null;
+    const name = String(x.name ?? x.food ?? '').trim();
+    let cal = x.cal ?? x.calories ?? x.kcal;
+    if (typeof cal === 'string') cal = parseFloat(cal.replace(/[^0-9.\-]/g, ''));
+    cal = Number(cal);
+    if (!name || !isFinite(cal) || cal < 0) return null;
+    return { name, portion: String(x.portion ?? x.amount ?? '').trim(), cal: Math.round(cal) };
+  }).filter(Boolean);
+}
+
+function anthropicError(res, body) {
+  const msg = body && body.error && body.error.message ? ` (${body.error.message})` : '';
+  const type = body && body.error && body.error.type;
+  if (res.status === 401 || type === 'authentication_error') return 'Anthropic rejected the API key. Check it in Settings.';
+  if (res.status === 403 || type === 'permission_error') return 'This Anthropic API key doesn’t have permission to use this model' + msg + '.';
+  if (res.status === 429 || type === 'rate_limit_error') return 'Anthropic rate limit reached. Wait a minute and try again.';
+  if (res.status === 529 || type === 'overloaded_error') return 'Anthropic’s API is overloaded right now. Try again in a minute.';
+  if (res.status === 413) return 'The photo is too large to send. Try a different photo.';
+  if (res.status === 400 && /credit balance/i.test(msg)) return 'Your Anthropic account is out of credits' + msg + '.';
+  if (res.status >= 500) return `Anthropic’s API had a server error (HTTP ${res.status}). Try again shortly.`;
+  return `Anthropic request failed (HTTP ${res.status})${msg}.`;
+}
+
+async function callAnthropic(b64, userNote, withFallbacks = true) {
+  const text = userNote ? `Note from me about this photo: ${userNote}\n\nReturn the JSON array.` : 'Return the JSON array.';
+  const payload = {
+    model: ANT_MODEL,
+    max_tokens: 8000,
+    output_config: { effort: 'medium' },
+    system: PHOTO_SYSTEM,
+    messages: [{ role: 'user', content: [
+      { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: b64 } },
+      { type: 'text', text },
+    ] }],
+  };
+  const headers = {
+    'content-type': 'application/json',
+    'x-api-key': antKey(),
+    'anthropic-version': '2023-06-01',
+    'anthropic-dangerous-direct-browser-access': 'true',
+  };
+  if (withFallbacks) {
+    // If the model declines, let the API retry on its default fallback model.
+    payload.fallbacks = 'default';
+    headers['anthropic-beta'] = 'server-side-fallback-2026-07-01';
+  }
+  const { res, body } = await fetchJSON(ANT_URL, { method: 'POST', headers, body: JSON.stringify(payload) }, { label: 'Photo estimate', timeout: 120000 });
+  if (!res.ok && withFallbacks && res.status === 400 && /fallback|beta/i.test(JSON.stringify(body || ''))) {
+    return callAnthropic(b64, userNote, false);
+  }
+  if (!res.ok) throw new AppError(anthropicError(res, body));
+  if (!body || !Array.isArray(body.content)) throw new AppError('Anthropic returned an unexpected response.');
+  if (body.stop_reason === 'refusal') throw new AppError('The model declined to analyze this photo. Try another photo or use Search.');
+  const out = body.content.filter(c => c.type === 'text').map(c => c.text).join('\n');
+  if (!out.trim()) throw new AppError(body.stop_reason === 'max_tokens' ? 'The estimate was cut off before finishing. Try again.' : 'The model returned an empty answer. Try again.');
+  return parseEstimate(out);
+}
+
+let estimates = [];
+$('#estBtn').onclick = async () => {
+  if (!antKey()) { refreshPhotoAvailability(); return; }
+  if (!photoData) return;
+  const st = $('#photoStatus');
+  $('#estBtn').disabled = true;
+  $('#estWrap').classList.add('hidden');
+  note(st, 'info', '<span class="spinner"></span>Estimating… this can take 10–30 seconds.');
+  try {
+    estimates = await callAnthropic(photoData, $('#photoNote').value.trim());
+    if (!estimates.length) { note(st, 'info', 'No food was identified in this photo. Try a clearer photo, add a note, or use Search.'); return; }
+    note(st);
+    $('#estList').innerHTML = estimates.map((x, i) => `<li>
+      <input type="checkbox" checked data-ck="${i}" aria-label="Include ${esc(x.name)}">
+      <div class="en">${esc(x.name)}<small>${esc(x.portion)}</small></div>
+      <input type="number" min="0" step="any" inputmode="decimal" value="${x.cal}" data-cal="${i}" aria-label="Calories for ${esc(x.name)}"></li>`).join('');
+    $('#estWrap').classList.remove('hidden');
+    updEstSum();
+  } catch (err) {
+    note(st, 'err', esc(err instanceof AppError ? err.message : 'Unexpected error: ' + (err && err.message)));
+  } finally { $('#estBtn').disabled = !photoData; }
+};
+function readEst() {
+  return estimates.map((x, i) => ({ ...x, on: $(`[data-ck="${i}"]`).checked, cal: parseFloat($(`[data-cal="${i}"]`).value) }));
+}
+function updEstSum() {
+  const sel = readEst().filter(x => x.on);
+  const bad = sel.some(x => !isFinite(x.cal) || x.cal < 0);
+  $('#estSum').textContent = bad ? 'Check the calorie values' : `${sel.length} selected · ${fmt(sel.reduce((a, x) => a + x.cal, 0))} kcal`;
+  $('#estAdd').disabled = !sel.length || bad;
+}
+$('#estList').oninput = $('#estList').onchange = updEstSum;
+$('#estAdd').onclick = () => {
+  const sel = readEst().filter(x => x.on);
+  if (!sel.length) return;
+  if (sel.some(x => !isFinite(x.cal) || x.cal < 0)) { note($('#photoStatus'), 'err', 'Each selected item needs a calorie number of 0 or more.'); return; }
+  if (addEntries(sel.map(x => ({ meal: meal(), name: x.name, portion: x.portion, cal: x.cal, source: 'photo' })))) {
+    toast(`Added ${sel.length} item${sel.length > 1 ? 's' : ''} to ${mealLabel(meal())}`);
+    $('#estWrap').classList.add('hidden');
+    $('#photoPrev').classList.add('hidden');
+    $('#photoNote').value = '';
+    photoData = null; estimates = [];
+    $('#estBtn').disabled = true;
+  }
+};
+
+// ---------- Settings ----------
+function openSettings() {
+  $('#usdaKey').value = usdaKey();
+  $('#antKey').value = antKey();
+  $('#keysStatus').textContent = '';
+  note($('#dataStatus'));
+  updDataSummary();
+  $('#setDlg').showModal();
+}
+function updDataSummary() {
+  const ks = Object.keys(log.days);
+  const n = ks.reduce((a, k) => a + log.days[k].length, 0);
+  $('#dataSummary').textContent = n ? `${n} entries across ${ks.length} day${ks.length > 1 ? 's' : ''}.` : 'No entries yet.';
+}
+$('#showKeys').onchange = e => { $('#usdaKey').type = $('#antKey').type = e.target.checked ? 'text' : 'password'; };
+$('#keysForm').onsubmit = e => {
+  e.preventDefault();
+  const u = $('#usdaKey').value.trim(), a = $('#antKey').value.trim();
+  if (a && !a.startsWith('sk-ant-')) { $('#keysStatus').textContent = 'Anthropic keys start with “sk-ant-”. Check the key.'; return; }
+  let ok = true;
+  try { u ? localStorage.setItem(USDA_KEY, u) : localStorage.removeItem(USDA_KEY); a ? localStorage.setItem(ANT_KEY, a) : localStorage.removeItem(ANT_KEY); }
+  catch { ok = false; }
+  $('#keysStatus').textContent = ok ? 'Saved.' : 'Could not save: browser storage is blocked.';
+  $('#demoNote').classList.toggle('hidden', !!usdaKey());
+  refreshPhotoAvailability();
+};
+$('#exportBtn').onclick = () => {
+  const data = { app: 'food-log', version: 1, exportedAt: new Date().toISOString(), days: log.days };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `food-log-${todayKey()}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  note($('#dataStatus'), 'info', 'Backup downloaded. API keys are not included.');
+};
+$('#importBtn').onclick = () => $('#importInput').click();
+function validateImport(d) {
+  if (!d || typeof d !== 'object' || !d.days || typeof d.days !== 'object' || Array.isArray(d.days)) throw new Error('This file isn’t a Food Log backup (missing "days").');
+  const days = {};
+  let n = 0;
+  for (const [k, list] of Object.entries(d.days)) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(k)) throw new Error(`Invalid date in backup: “${k}”.`);
+    if (!Array.isArray(list)) throw new Error(`Entries for ${k} aren’t a list.`);
+    const clean = list.map(e => {
+      if (!e || typeof e !== 'object' || !e.name || !isFinite(Number(e.cal))) throw new Error(`An entry on ${k} is missing a name or calories.`);
+      return { id: String(e.id || uid()), ts: Number(e.ts) || 0, meal: MEALS.some(m => m.id === e.meal) ? e.meal : 'snacks', name: String(e.name), portion: e.portion ? String(e.portion) : '', cal: Math.round(Number(e.cal)), source: e.source ? String(e.source) : 'import' };
+    });
+    if (clean.length) { days[k] = clean; n += clean.length; }
+  }
+  return { days, n };
+}
+$('#importInput').onchange = async e => {
+  const file = e.target.files && e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  const st = $('#dataStatus');
+  let parsed;
+  try {
+    const text = await file.text();
+    let d;
+    try { d = JSON.parse(text); } catch { throw new Error('The file isn’t valid JSON.'); }
+    parsed = validateImport(d);
+  } catch (err) { note(st, 'err', 'Import failed: ' + esc(err.message)); return; }
+  const cur = Object.values(log.days).reduce((a, l) => a + l.length, 0);
+  const ok = confirm(`Replace your current log (${cur} entries) with this backup (${parsed.n} entries across ${Object.keys(parsed.days).length} days)?\n\nThis overwrites everything currently stored and can't be undone.`);
+  if (!ok) { note(st, 'info', 'Import cancelled. Nothing was changed.'); return; }
+  const prev = log;
+  log = { version: 1, days: parsed.days };
+  if (!saveLog()) { log = prev; note(st, 'err', 'Import failed: could not write to browser storage.'); return; }
+  render(); updDataSummary();
+  note(st, 'info', `Imported ${parsed.n} entries.`);
+};
+
+render();
+})();
+</script>
+</body>
+</html>
