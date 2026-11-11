@@ -527,7 +527,8 @@ const meal = () => $('#mealSel').value;
 const mealLabel = id => (MEALS.find(m => m.id === id) || {}).label || id;
 
 // ---------- Fetch helper ----------
-class AppError extends Error {}
+class AppError extends Error { constructor(m, kind) { super(m); this.kind = kind; } }
+const sleep = ms => new Promise(r => setTimeout(r, ms));
 async function fetchJSON(url, opts = {}, { timeout = 20000, label = 'Request' } = {}) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeout);
@@ -535,12 +536,27 @@ async function fetchJSON(url, opts = {}, { timeout = 20000, label = 'Request' } 
   try {
     res = await fetch(url, { ...opts, signal: ctrl.signal });
   } catch (e) {
-    if (e.name === 'AbortError') throw new AppError(`${label} timed out after ${timeout / 1000}s. Check your connection and try again.`);
-    throw new AppError(navigator.onLine === false ? `You appear to be offline. ${label} needs an internet connection.` : `${label} failed: network error (could not reach the server). Check your connection, or the service may be down.`);
+    if (e.name === 'AbortError') throw new AppError(`${label} timed out after ${timeout / 1000}s. Check your connection and try again.`, 'timeout');
+    if (navigator.onLine === false) throw new AppError(`You appear to be offline. ${label} needs an internet connection.`, 'offline');
+    throw new AppError(`${label} failed: network error (could not reach the server). Check your connection, or the service may be down.`, 'network');
   } finally { clearTimeout(timer); }
   let body = null, text = '';
   try { text = await res.text(); body = text ? JSON.parse(text) : null; } catch { body = null; }
   return { res, body, text };
+}
+
+// Retries network failures and 5xx responses (both APIs have frequent brief outages).
+// Returns {res, body} or throws AppError; err.kind === 'network' when every attempt failed to connect.
+async function fetchRetry(url, label, tries = 3) {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      const r = await fetchJSON(url, {}, { label, timeout: 20000 });
+      if (r.res.status < 500 || attempt >= tries) return r;
+    } catch (e) {
+      if (e.kind !== 'network' || attempt >= tries) throw e;
+    }
+    await sleep(attempt * 700);
+  }
 }
 
 // ---------- Food search ----------
@@ -572,16 +588,22 @@ function normUSDA(f) {
   return { src: 'usda', name, brand, kcal: per100, serving: '100 g', basis: f.dataType || '' };
 }
 
-async function searchUSDA(q) {
+// USDA returns HTTP 400 for queries containing / ( ) " [ ] { } ^ (search-syntax characters).
+const usdaQuery = q => q.replace(/[^\p{L}\p{N}\s%.,'&+*!?:<>#~-]/gu, ' ').replace(/\s+/g, ' ').trim();
+async function searchUSDA(rawQ) {
+  const q = usdaQuery(rawQ);
+  if (!q) return [];
   const key = usdaKey() || 'DEMO_KEY';
   const url = `${USDA_URL}?${new URLSearchParams({ api_key: key, query: q, pageSize: '25' })}`;
-  const { res, body } = await fetchJSON(url, {}, { label: 'USDA search' });
+  const { res, body } = await fetchRetry(url, 'USDA search');
   if (!res.ok) {
     const code = body && body.error && body.error.code;
     if (code === 'OVER_RATE_LIMIT' || res.status === 429)
       throw new AppError(key === 'DEMO_KEY' ? 'USDA rate limit reached for DEMO_KEY. Add your own free key in Settings, or wait an hour.' : 'USDA rate limit reached for your key. Wait a while and try again.');
     if (code === 'API_KEY_INVALID' || code === 'API_KEY_MISSING' || res.status === 403 || res.status === 401)
       throw new AppError('USDA rejected the API key. Check it in Settings (or clear it to use DEMO_KEY).');
+    if (res.status === 400) throw new AppError(`USDA couldn\u2019t process “${q}”. Try simpler words, e.g. “espresso” or “2% milk”.`);
+    if (res.status >= 500) throw new AppError(`USDA\u2019s server is having trouble (HTTP ${res.status}, after 3 tries). Try again in a minute.`);
     throw new AppError(`USDA search failed (HTTP ${res.status}).`);
   }
   if (!body || !Array.isArray(body.foods)) throw new AppError('USDA returned an unexpected response.');
@@ -607,7 +629,14 @@ function normOFF(p) {
 
 async function searchOFF(q) {
   const url = `${OFF_URL}?${new URLSearchParams({ search_terms: q, search_simple: '1', action: 'process', json: '1', page_size: '20', fields: 'code,product_name,generic_name,brands,nutriments,serving_size,serving_quantity' })}`;
-  const { res, body } = await fetchJSON(url, {}, { label: 'Open Food Facts search', timeout: 20000 });
+  // Its search server often answers 503 without CORS headers, which browsers report as a network error.
+  let res, body;
+  try { ({ res, body } = await fetchRetry(url, 'Open Food Facts search', 4)); }
+  catch (e) {
+    if (e.kind === 'network') throw new AppError('Open Food Facts didn\u2019t respond after 4 tries. Their search server is often overloaded; try again in a minute.');
+    throw e;
+  }
+  if (res.status === 503 || res.status === 502) throw new AppError('Open Food Facts is temporarily unavailable (server overloaded). Try again in a minute.');
   if (res.status === 429) throw new AppError('Open Food Facts is rate-limiting requests. Wait a minute and try again.');
   if (!res.ok) throw new AppError(`Open Food Facts search failed (HTTP ${res.status}).`);
   if (!body || !Array.isArray(body.products)) throw new AppError('Open Food Facts returned an unexpected response.');
@@ -638,7 +667,8 @@ $('#searchForm').onsubmit = async e => {
   let html = errs.map(m => `<div class="note err">${esc(m)}</div>`).join('');
   if (!results.length && !errs.length) html += `<div class="note info">No results for “${esc(q)}”. Try fewer or different words, or use Manual entry.</div>`;
   else if (!results.length) html += `<div class="note info">No results to show. You can still add it with Manual entry.</div>`;
-  else if (errs.length) html += `<div class="note info">Showing results from ${u.status === 'fulfilled' ? 'USDA' : 'Open Food Facts'} only.</div>`;
+  if (q.split(/\s+/).length > 4) html += `<div class="note info">Tip: search works best with short food names (e.g. “espresso”, then “2% milk”). For a combined drink or meal, use Photo or Manual.</div>`;
+  if (results.length && errs.length) html += `<div class="note info">Showing results from ${u.status === 'fulfilled' ? 'USDA' : 'Open Food Facts'} only.</div>`;
   status.innerHTML = html;
   $('#results').innerHTML = results.map((r, i) => `<li><button data-i="${i}">
     <span class="rn"><div><span class="badge ${r.src}">${r.src === 'usda' ? 'USDA' : 'OFF'}</span>${esc(r.name)}</div>
