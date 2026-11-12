@@ -30,6 +30,18 @@ If you leave this blank, the app uses `DEMO_KEY`. That works, but it's limited t
 
 The photo tab stays disabled until a key is saved. Because the app calls the API directly from your browser, anyone who can use your browser profile can read the key. Use it only on your own devices. You can also set a monthly spend limit in the Anthropic Console.
 
+## Sync to GitHub (recommended)
+
+Your log is stored in the browser, so clearing Safari's website data, using Private Browsing, or switching between Safari and the home-screen app leaves you with an empty log. Sync saves the log to a private GitHub repo so it comes back on any device. API keys are never synced.
+
+1. Create a **private** repo, for example `food-log-data`. Leave it empty. The app won't sync to a public repo.
+2. On GitHub, go to **Settings → Developer settings → Personal access tokens → Fine-grained tokens** and select **Generate new token**.
+3. Under **Repository access**, choose **Only select repositories** and pick your data repo.
+4. Under **Permissions → Repository permissions**, set **Contents** to **Read and write**. Nothing else is needed.
+5. In the app, open **Settings → GitHub sync**, enter the repo as `owner/name` with the token, and tap **Save & sync**.
+
+The log is saved as `food-log.json` in that repo. Every add or delete syncs within a couple of seconds, and the app pulls the latest copy whenever you open it. Changes made on two devices at once are merged. If you're offline, entries are kept on the device and sync later. Enter the token once on each device. Safari and the home-screen app count as separate devices.
+
 ## Add to your home screen
 
 - **iPhone (Safari):** tap Share, then **Add to Home Screen**.

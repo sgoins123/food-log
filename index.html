@@ -192,6 +192,14 @@ dialog::backdrop { background: rgba(0,0,0,.45); }
 .toast button { background: none; border: 0; color: inherit; font-weight: 700; text-decoration: underline; }
 .toast.err { background: var(--danger); color: #fff; }
 .hidden { display: none !important; }
+.sync-badge { font-size: .8rem; font-weight: 600; color: var(--muted); }
+.sync-badge.err { color: var(--danger); border-color: var(--danger); }
+.hint { margin-top: 10px; font-size: .9rem; color: var(--muted); }
+.hint button { background: none; border: 0; padding: 0; color: var(--accent); font-weight: 700; }
+details.howto { font-size: .9rem; margin-top: 10px; }
+details.howto summary { cursor: pointer; color: var(--accent); font-weight: 600; }
+details.howto ol { padding-left: 20px; margin: 8px 0; }
+details.howto li { margin-bottom: 4px; }
 .muted { color: var(--muted); }
 hr.sep { border: 0; border-top: 1px solid var(--border); margin: 18px 0; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
@@ -201,9 +209,12 @@ hr.sep { border: 0; border-top: 1px solid var(--border); margin: 18px 0; }
 <div class="wrap">
   <header class="top">
     <h1>Food Log</h1>
+    <div class="row">
+    <button class="icon-btn sync-badge hidden" id="syncBadge" aria-label="Sync status"></button>
     <button class="icon-btn" id="openSettings" aria-label="Settings">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
     </button>
+    </div>
   </header>
 
   <nav class="datenav" aria-label="Day navigation">
@@ -220,6 +231,7 @@ hr.sep { border: 0; border-top: 1px solid var(--border); margin: 18px 0; }
   <section class="card" aria-label="Daily total">
     <div class="total"><span class="num" id="dayTotal">0</span><span class="unit">kcal</span></div>
     <div class="breakdown" id="breakdown"></div>
+    <div class="hint hidden" id="dayHint"></div>
   </section>
 
   <section class="card" aria-label="Last 7 days">
@@ -317,6 +329,32 @@ hr.sep { border: 0; border-top: 1px solid var(--border); margin: 18px 0; }
         <div class="row"><button class="btn primary" type="submit">Save keys</button><span id="keysStatus" class="muted"></span></div>
       </form>
       <hr class="sep">
+      <h3 style="margin:0 0 6px;font-size:1rem">GitHub sync</h3>
+      <p class="muted" style="font-size:.85rem;margin-top:0">Saves your log to a <b>private</b> GitHub repo, so it survives cleared browser data and matches on every device. API keys are never synced.</p>
+      <form id="syncForm" autocomplete="off">
+        <label class="f" for="ghRepo">Private data repo (owner/name)</label>
+        <input type="text" id="ghRepo" placeholder="your-username/food-log-data" spellcheck="false" autocapitalize="off" autocorrect="off">
+        <label class="f" for="ghToken">GitHub fine-grained token</label>
+        <input type="password" id="ghToken" placeholder="github_pat_…" spellcheck="false" autocapitalize="off" autocorrect="off">
+        <div class="row" style="margin-top:10px;flex-wrap:wrap">
+          <button class="btn primary" type="submit">Save &amp; sync</button>
+          <button class="btn" type="button" id="syncNow">Sync now</button>
+          <button class="btn danger" type="button" id="syncOff">Turn off</button>
+        </div>
+        <div id="syncStatus"></div>
+      </form>
+      <details class="howto">
+        <summary>How to set up sync</summary>
+        <ol>
+          <li>Create a <b>private</b> repo on GitHub, e.g. <code>food-log-data</code> (leave it empty).</li>
+          <li>Go to GitHub → Settings → Developer settings → Personal access tokens → <b>Fine-grained tokens</b> → Generate new token.</li>
+          <li>Repository access: <b>Only select repositories</b> → pick your data repo.</li>
+          <li>Permissions → Repository permissions → <b>Contents: Read and write</b>. Nothing else is needed.</li>
+          <li>Pick an expiration, generate, and paste the token above with the repo name.</li>
+        </ol>
+        <p class="muted">The token is stored only in this browser. Enter it once on each device (Safari and the home-screen app count as separate).</p>
+      </details>
+      <hr class="sep">
       <h3 style="margin:0 0 6px;font-size:1rem">Data</h3>
       <p class="muted" style="font-size:.85rem;margin-top:0" id="dataSummary"></p>
       <div class="row">
@@ -345,6 +383,9 @@ const MEALS = [
 const LOG_KEY = 'foodlog.v1';
 const USDA_KEY = 'foodlog.usdaKey';
 const ANT_KEY = 'foodlog.anthropicKey';
+const GH_REPO = 'foodlog.ghRepo';
+const GH_TOKEN = 'foodlog.ghToken';
+const DATA_FILE = 'food-log.json';
 const USDA_URL = 'https://api.nal.usda.gov/fdc/v1/foods/search';
 const OFF_URL = 'https://world.openfoodfacts.org/cgi/search.pl';
 const ANT_URL = 'https://api.anthropic.com/v1/messages';
@@ -360,13 +401,13 @@ function lsSet(k, v) {
 }
 function loadLog() {
   const raw = lsGet(LOG_KEY);
-  if (!raw) return { version: 1, days: {} };
+  if (!raw) return { version: 1, days: {}, deleted: {} };
   try {
     const d = JSON.parse(raw);
-    if (d && typeof d.days === 'object') return d;
+    if (d && typeof d.days === 'object') { if (!d.deleted || typeof d.deleted !== 'object') d.deleted = {}; return d; }
   } catch {}
   toast('Saved log data was unreadable. Starting empty; import a backup to restore.', true);
-  return { version: 1, days: {} };
+  return { version: 1, days: {}, deleted: {} };
 }
 let log = loadLog();
 function saveLog() { return lsSet(LOG_KEY, JSON.stringify(log)); }
@@ -418,6 +459,12 @@ function render() {
 
   const entries = dayEntries(current);
   $('#dayTotal').textContent = fmt(dayTotal(current));
+  const hint = $('#dayHint');
+  const prevK = addDays(current, -1), prevT = dayTotal(prevK);
+  if (!entries.length && current === today && prevT > 0) {
+    hint.innerHTML = `New day. Yesterday: <b>${fmt(prevT)} kcal</b> · <button data-day="${prevK}">View</button>`;
+    hint.classList.remove('hidden');
+  } else hint.classList.add('hidden');
   $('#breakdown').innerHTML = MEALS.map(m => {
     const s = entries.filter(e => e.meal === m.id).reduce((a, e) => a + (Number(e.cal) || 0), 0);
     return `<div><b>${fmt(s)}</b><small>${m.label}</small></div>`;
@@ -459,6 +506,7 @@ function addEntries(items) {
   log.days[k].push(...items.map(it => ({ id: uid(), ts: Date.now(), ...it, cal: Math.round(Number(it.cal) || 0) })));
   if (!saveLog()) { log = loadLog(); return false; }
   render();
+  queueSync();
   return true;
 }
 
@@ -469,12 +517,15 @@ function deleteEntry(id) {
   const [removed] = list.splice(idx, 1);
   const dayK = current;
   if (!list.length) delete log.days[dayK];
+  log.deleted[removed.id] = Date.now(); // remembered so other devices drop it too
   saveLog();
   render();
+  queueSync();
   toast(`Deleted ${removed.name}`, false, { label: 'Undo', fn: () => {
     if (!log.days[dayK]) log.days[dayK] = [];
-    log.days[dayK].splice(idx, 0, removed);
-    saveLog(); render();
+    // Restore as a new id: the old id may already be marked deleted on GitHub.
+    log.days[dayK].splice(idx, 0, { ...removed, id: uid() });
+    saveLog(); render(); queueSync();
   } });
 }
 
@@ -482,6 +533,7 @@ function deleteEntry(id) {
 $('#prevDay').onclick = () => { current = addDays(current, -1); render(); };
 $('#nextDay').onclick = () => { if (current < todayKey()) { current = addDays(current, 1); render(); } };
 $('#todayBtn').onclick = () => { current = todayKey(); render(); };
+$('#dayHint').onclick = e => { const b = e.target.closest('[data-day]'); if (b) { current = b.dataset.day; render(); } };
 $('#week').onclick = e => { const b = e.target.closest('[data-day]'); if (b) { current = b.dataset.day; render(); } };
 $('#meals').onclick = e => {
   const del = e.target.closest('[data-del]');
@@ -496,7 +548,8 @@ $$('dialog').forEach(d => d.addEventListener('click', e => { if (e.target === d)
 document.addEventListener('click', e => {
   if (e.target.closest('[data-goto-settings]')) { $('#addDlg').close(); openSettings(); }
 });
-document.addEventListener('visibilitychange', () => { if (!document.hidden) render(); });
+document.addEventListener('visibilitychange', () => { if (!document.hidden) { render(); queueSync(200); } });
+window.addEventListener('online', () => queueSync(200));
 
 // ---------- Add dialog ----------
 $('#mealSel').innerHTML = MEALS.map(m => `<option value="${m.id}">${m.label}</option>`).join('');
@@ -912,6 +965,9 @@ function openSettings() {
   $('#usdaKey').value = usdaKey();
   $('#antKey').value = antKey();
   $('#keysStatus').textContent = '';
+  $('#ghRepo').value = ghRepo();
+  $('#ghToken').value = ghToken();
+  showSync();
   note($('#dataStatus'));
   updDataSummary();
   $('#setDlg').showModal();
@@ -919,9 +975,9 @@ function openSettings() {
 function updDataSummary() {
   const ks = Object.keys(log.days);
   const n = ks.reduce((a, k) => a + log.days[k].length, 0);
-  $('#dataSummary').textContent = n ? `${n} entries across ${ks.length} day${ks.length > 1 ? 's' : ''}.` : 'No entries yet.';
+  $('#dataSummary').textContent = n ? `${n} entr${n === 1 ? 'y' : 'ies'} across ${ks.length} day${ks.length > 1 ? 's' : ''}.` : 'No entries yet.';
 }
-$('#showKeys').onchange = e => { $('#usdaKey').type = $('#antKey').type = e.target.checked ? 'text' : 'password'; };
+$('#showKeys').onchange = e => { $('#usdaKey').type = $('#antKey').type = $('#ghToken').type = e.target.checked ? 'text' : 'password'; };
 $('#keysForm').onsubmit = e => {
   e.preventDefault();
   const u = $('#usdaKey').value.trim(), a = $('#antKey').value.trim();
@@ -975,13 +1031,193 @@ $('#importInput').onchange = async e => {
   const ok = confirm(`Replace your current log (${cur} entries) with this backup (${parsed.n} entries across ${Object.keys(parsed.days).length} days)?\n\nThis overwrites everything currently stored and can't be undone.`);
   if (!ok) { note(st, 'info', 'Import cancelled. Nothing was changed.'); return; }
   const prev = log;
-  log = { version: 1, days: parsed.days };
+  // Give imported entries fresh ids and mark everything currently known as deleted,
+  // so the import also replaces what's on GitHub instead of merging with it.
+  const deleted = { ...(log.deleted || {}) };
+  const now = Date.now();
+  for (const list of Object.values(log.days)) for (const e of list) deleted[e.id] = now;
+  for (const list of Object.values(parsed.days)) for (const e of list) e.id = uid();
+  log = { version: 1, days: parsed.days, deleted };
   if (!saveLog()) { log = prev; note(st, 'err', 'Import failed: could not write to browser storage.'); return; }
   render(); updDataSummary();
-  note(st, 'info', `Imported ${parsed.n} entries.`);
+  note(st, 'info', `Imported ${parsed.n} entries.${syncOn() ? ' Syncing to GitHub…' : ''}`);
+  queueSync(0);
 };
 
+// ---------- GitHub sync ----------
+const ghRepo = () => (lsGet(GH_REPO) || '').trim();
+const ghToken = () => (lsGet(GH_TOKEN) || '').trim();
+const syncOn = () => !!(ghRepo() && ghToken());
+const EMPTY = { days: {}, deleted: {} };
+const syncState = { busy: false, again: false, last: null, err: null };
+let syncTimer = null, repoOK = null;
+
+// Union of entries by id, minus anything either side deleted. Entries are never edited,
+// so a union is a safe merge for changes made on several devices.
+function mergeLogs(a, b) {
+  const deleted = {};
+  for (const src of [a.deleted || {}, b.deleted || {}])
+    for (const [id, ts] of Object.entries(src)) deleted[id] = Math.max(deleted[id] || 0, Number(ts) || 0);
+  const days = {};
+  for (const src of [a.days || {}, b.days || {}])
+    for (const [k, list] of Object.entries(src)) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(k) || !Array.isArray(list)) continue;
+      for (const e of list) {
+        if (!e || !e.id || !e.name || deleted[e.id]) continue;
+        const m = days[k] || (days[k] = new Map());
+        if (!m.has(e.id)) m.set(e.id, e);
+      }
+    }
+  const out = {};
+  for (const k of Object.keys(days).sort()) out[k] = [...days[k].values()].sort((x, y) => (x.ts || 0) - (y.ts || 0));
+  const delOut = {};
+  for (const id of Object.keys(deleted).sort()) delOut[id] = deleted[id];
+  return { version: 1, days: out, deleted: delOut };
+}
+
+function toB64(str) {
+  const bytes = new TextEncoder().encode(str);
+  let bin = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+  return btoa(bin);
+}
+function fromB64(b64) {
+  const bin = atob(String(b64).replace(/\s/g, ''));
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new TextDecoder().decode(bytes);
+}
+
+async function gh(path, opts = {}) {
+  let res, body = null;
+  try {
+    res = await fetch(`https://api.github.com/repos/${ghRepo()}${path}`, {
+      ...opts,
+      cache: 'no-store', // GitHub caches reads for 60s; stale data would cause write conflicts
+      headers: {
+        Accept: 'application/vnd.github+json',
+        Authorization: `Bearer ${ghToken()}`,
+        'X-GitHub-Api-Version': '2022-11-28',
+        ...(opts.body ? { 'Content-Type': 'application/json' } : {}),
+      },
+    });
+  } catch {
+    throw new AppError(navigator.onLine === false
+      ? 'Offline. Changes are saved on this device and will sync when you\u2019re back online.'
+      : 'Couldn\u2019t reach GitHub (network error). Changes are saved on this device and will sync later.', 'network');
+  }
+  try { body = await res.json(); } catch {}
+  return { res, body };
+}
+function ghError(res, body, what) {
+  const m = body && body.message ? ` (${body.message})` : '';
+  if (res.status === 401) return 'GitHub rejected the token: it\u2019s wrong, expired, or revoked. Create a new one and paste it in Settings.';
+  if ((res.status === 403 || res.status === 429) && res.headers.get('x-ratelimit-remaining') === '0') return 'GitHub API rate limit reached. Sync will retry later.';
+  if (res.status === 403) return `The token isn\u2019t allowed to ${what}. Give it \u201cContents: Read and write\u201d access to ${ghRepo()}.`;
+  if (res.status === 404) return `Repo \u201c${ghRepo()}\u201d wasn\u2019t found, or the token doesn\u2019t have access to it. Check the name and the token\u2019s repository access.`;
+  if (res.status >= 500) return `GitHub had a server error (HTTP ${res.status}). Sync will retry later.`;
+  return `GitHub sync failed (HTTP ${res.status})${m}.`;
+}
+async function checkRepo() {
+  if (repoOK === ghRepo()) return;
+  const { res, body } = await gh('');
+  if (!res.ok) throw new AppError(ghError(res, body, 'read this repo'));
+  if (!body || body.private !== true)
+    throw new AppError(`\u201c${ghRepo()}\u201d is a public repo, so your food log would be visible to anyone. Nothing was uploaded. Use a private repo (or make this one private in its GitHub settings), then sync again.`);
+  repoOK = ghRepo();
+}
+
+function queueSync(delay = 1200) {
+  if (!syncOn()) return;
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(runSync, delay);
+}
+async function runSync() {
+  if (!syncOn()) return;
+  if (syncState.busy) { syncState.again = true; return; }
+  syncState.busy = true; syncState.err = null; showSync();
+  try {
+    await checkRepo();
+    for (let attempt = 1; ; attempt++) {
+      const { res, body } = await gh(`/contents/${DATA_FILE}`);
+      let remote = EMPTY, sha;
+      if (res.status !== 404) {
+        if (!res.ok) throw new AppError(ghError(res, body, 'read the log'));
+        if (!body || body.encoding !== 'base64' || typeof body.content !== 'string')
+          throw new AppError(`${DATA_FILE} in ${ghRepo()} is too large (over 1 MB) for the GitHub API. Export a backup to keep your data.`);
+        try { remote = JSON.parse(fromB64(body.content)); } catch { remote = null; }
+        if (!remote || typeof remote.days !== 'object')
+          throw new AppError(`${DATA_FILE} in ${ghRepo()} isn\u2019t a valid Food Log file, so it wasn\u2019t overwritten. Fix or delete it on GitHub, then sync again.`);
+        sha = body.sha;
+      }
+      const merged = mergeLogs(log, remote);
+      const mergedStr = JSON.stringify(merged);
+      if (mergedStr !== JSON.stringify(mergeLogs(log, EMPTY))) { log = merged; saveLog(); render(); }
+      if (mergedStr === JSON.stringify(mergeLogs(remote, EMPTY))) break; // GitHub already has everything
+      const file = { app: 'food-log', updatedAt: new Date().toISOString(), ...merged };
+      const put = await gh(`/contents/${DATA_FILE}`, {
+        method: 'PUT',
+        body: JSON.stringify({ message: `Update food log (${todayKey()})`, content: toB64(JSON.stringify(file, null, 1)), ...(sha ? { sha } : {}) }),
+      });
+      if (put.res.ok) break;
+      // 409/422: the file changed on another device since we read it. Read and merge again.
+      if ((put.res.status === 409 || put.res.status === 422) && attempt < 4) continue;
+      throw new AppError(ghError(put.res, put.body, 'save the log'));
+    }
+    syncState.last = Date.now();
+  } catch (e) {
+    syncState.err = e instanceof AppError ? e.message : 'Sync failed: ' + (e && e.message || e);
+    if (!(e instanceof AppError && e.kind === 'network')) repoOK = null;
+  } finally {
+    syncState.busy = false;
+    showSync();
+    if (syncState.again) { syncState.again = false; queueSync(300); }
+  }
+}
+function showSync() {
+  const badge = $('#syncBadge');
+  badge.classList.toggle('hidden', !syncOn());
+  badge.classList.toggle('err', !!syncState.err && !syncState.busy);
+  badge.textContent = syncState.busy ? 'Syncing\u2026' : syncState.err ? '\u26a0 Sync' : syncState.last ? '\u2713 Synced' : 'Sync';
+  const st = $('#syncStatus');
+  if (!syncOn()) { note(st, 'info', ghRepo() ? 'Sync is off. Add a token to turn it on.' : ''); if (!ghRepo()) note(st); return; }
+  if (syncState.busy) note(st, 'info', '<span class="spinner"></span>Syncing with GitHub\u2026');
+  else if (syncState.err) note(st, 'err', esc(syncState.err));
+  else if (syncState.last) note(st, 'info', `Synced with <b>${esc(ghRepo())}</b> at ${new Date(syncState.last).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}.`);
+  else note(st);
+}
+$('#syncBadge').onclick = openSettings;
+$('#syncForm').onsubmit = async e => {
+  e.preventDefault();
+  let repo = $('#ghRepo').value.trim().replace(/^https?:\/\/github\.com\//i, '').replace(/\.git$/i, '').replace(/\/+$/, '');
+  const token = $('#ghToken').value.trim();
+  const st = $('#syncStatus');
+  if (!/^[\w.-]+\/[\w.-]+$/.test(repo)) { note(st, 'err', 'Enter the repo as owner/name, e.g. your-username/food-log-data.'); return; }
+  if (!token) { note(st, 'err', 'Paste your GitHub token.'); return; }
+  if (/\s/.test(token)) { note(st, 'err', 'The token contains spaces. Copy it again from GitHub.'); return; }
+  if (!lsSet(GH_REPO, repo) || !lsSet(GH_TOKEN, token)) return;
+  $('#ghRepo').value = repo;
+  repoOK = null; syncState.last = null; syncState.err = null;
+  await runSync();
+};
+$('#syncNow').onclick = () => {
+  if (!syncOn()) { note($('#syncStatus'), 'err', 'Enter a repo and token first, then tap Save & sync.'); return; }
+  repoOK = null; runSync();
+};
+$('#syncOff').onclick = () => {
+  try { localStorage.removeItem(GH_TOKEN); } catch {}
+  $('#ghToken').value = '';
+  syncState.err = null; syncState.last = null; repoOK = null;
+  showSync();
+  note($('#syncStatus'), 'info', 'Sync is off. Your log stays on this device, and the copy on GitHub is untouched.');
+};
+
+// Ask the browser not to clear this app's storage automatically (best effort).
+if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+
 render();
+showSync();
+if (syncOn()) runSync();
 })();
 </script>
 </body>
